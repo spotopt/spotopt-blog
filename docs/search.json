@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "I will write something. I promise."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html",
+    "title": "Why Polars is great",
+    "section": "",
+    "text": "According to the official Polars website, Polars is\n\n[…] a lightning fast DataFrame library/in-memory query engine. Its embarrassingly parallel execution, cache efficient algorithms and expressive API makes it perfect for efficient data wrangling, data pipelines, snappy APIs and so much more.\n\nThis sounds a lot like pandas, doesn’t it? According to the pandas website, pandas is:\n\n[…] a fast, powerful, flexible and easy to use open source data analysis and manipulation tool, built on top of the Python programming language.\n\nAlright then, both are clearly intended for similar things, but Polars has this emphasize on speed and this is really the first noteworthy difference. Polars is implemented in Rust, which, in contrast to Python, does not have a Global Interpreter Lock (GIL). That means that you can use your entire machine for your data wrangling with Polars. Let’s have a closer look into the differences of these two tools."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#what-is-polars",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#what-is-polars",
+    "title": "Why Polars is great",
+    "section": "",
+    "text": "According to the official Polars website, Polars is\n\n[…] a lightning fast DataFrame library/in-memory query engine. Its embarrassingly parallel execution, cache efficient algorithms and expressive API makes it perfect for efficient data wrangling, data pipelines, snappy APIs and so much more.\n\nThis sounds a lot like pandas, doesn’t it? According to the pandas website, pandas is:\n\n[…] a fast, powerful, flexible and easy to use open source data analysis and manipulation tool, built on top of the Python programming language.\n\nAlright then, both are clearly intended for similar things, but Polars has this emphasize on speed and this is really the first noteworthy difference. Polars is implemented in Rust, which, in contrast to Python, does not have a Global Interpreter Lock (GIL). That means that you can use your entire machine for your data wrangling with Polars. Let’s have a closer look into the differences of these two tools."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#the-main-differences-between-polars-and-pandas",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#the-main-differences-between-polars-and-pandas",
+    "title": "Why Polars is great",
+    "section": "2 The main differences between Polars and pandas",
+    "text": "2 The main differences between Polars and pandas\n\nThere is no index/multi-index in Polars\nYes, you read this correctly. How can that be true? Could you have wasted all the hours you spent learning how to use reset_index(), set_index(), and the difference between .loc[] and .iloc[]? Maybe. Honestly, if you really think about it, it doesn’t make too much sense. Just think about databases and SQL for a moment. SQL tables have no such index either and SQL is the forefront of data engineering. On the other hand, once you have mastered pandas’ index, functions like resample() can make your life much easier. But once again, at the end, it doesn’t matter really whether it is an index or simply a column. Polars makes a good point with this:\n\nPolars aims to have predictable results and readable queries, as such we think an index does not help us reach that objective.\n\n\n\nParallel operations\nAs already mentioned, you can parallelize with Polars because it is written in Rust. This all happens under hood. That means you don’t need to care about it or install anything else.\n\n\nThe lazy API\nAs of today, pandas has only an eager API. This means that when you run whatever command with pandas, let’s say join(), pandas will execute this directly. Polars lets you collect commands into a query, which are then executed when you call the collect() function. By knowing all the steps you want to execute, Polars can make use of a query optimization to speed up your code."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#what-they-have-in-common",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#what-they-have-in-common",
+    "title": "Why Polars is great",
+    "section": "3 What they have in common",
+    "text": "3 What they have in common\nA lot actually. That is because pandas is an awesome library and they have thought of great things that do not need to be reinvented. If you are coming from pandas, you will need some time to adjust yourself to the somewhat different syntax. Other than that, you will quickly find your way around things in Polars.\nIn this section of the Polars’ user guide, you can find a list of the key syntax differences."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#more-amazing-features",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#more-amazing-features",
+    "title": "Why Polars is great",
+    "section": "4 More amazing features",
+    "text": "4 More amazing features\nThis is a list of features I find personally very interesting and that are difficult to find elsewhere.\n\nScanning files\nMost input functions that start with read_ have also a scan_ equivalent, e.g. read_parquet() and scan_parquet(). What it does is that it allows you to first scan the file instead of reading the whole file into memory. This gives you to the possibility to query data in a file with less RAM and CPU usage.\n\n\nSQL\nIf you are familiar with SQL and want to use it even in the Python world, you can do this with Polars. Polars offers an SQL API that lets you write SQL queries. This even works across different files with different file formats. If you combine it with scanning files, you can for example merge parts of a csv file with a couple of columns in a parquet file on a cloud storage without consuming too much memory or CPU.\nThis is the link to the SQL section of the Polars user guide.\n\n\nStreaming\nEven though the streaming feature is still under development, you can already use it for a few file formats and functions. Streaming is running your query in batches, which enables you to deal with datasets that are larger than your memory.\nYou can read more about streaming in the official user guide."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#should-i-switch-completely-to-polars",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#should-i-switch-completely-to-polars",
+    "title": "Why Polars is great",
+    "section": "5 Should I switch completely to Polars?",
+    "text": "5 Should I switch completely to Polars?\nNo, don’t! Especially not if you have already thousands of lines of pandas code. Instead, use Polars there you really need it, namely where your bottlenecks are. So start there where you really need a speed-up or where reading from many different data sources has become a burden with pandas. In summary, use pandas and Polars at what they are good at, instead of going for one of them only.\nIn your code, you can simply convert between these two DataFrame types, even though you shouldn’t do it too often with big DataFrames. Here is an example:\n\nimport pandas as pd\nimport polars as pl\n\npandas_df = pd.DataFrame({\"col1\": [0, 1], \"col2\": [\"a\", \"b\"]})\ntype(pandas_df)\n\npandas.core.frame.DataFrame\n\n\n\npolars_df = pl.from_pandas(pandas_df)\ntype(polars_df)\n\npolars.dataframe.frame.DataFrame\n\n\n\ntype(polars_df.to_pandas())\n\npandas.core.frame.DataFrame"
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#summary",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#summary",
+    "title": "Why Polars is great",
+    "section": "6 Summary",
+    "text": "6 Summary\nPolars is , similar to pandas, a powerful Python libary for data wrangling and more. Given that it is written in Rust, it is much faster and more memory-efficient than pandas. If you need that extra bit of performance, you should definetly check out Polars.\nHowever, don’t be silly and rewrite all your pandas code in Polars. Polars and pandas get along with each other and are probably most powerful when used together."
+  },
+  {
+    "objectID": "posts/why-polars-is-great/why_polars_is_great.html#links",
+    "href": "posts/why-polars-is-great/why_polars_is_great.html#links",
+    "title": "Why Polars is great",
+    "section": "7 Links",
+    "text": "7 Links\nCheck out the official Polars website. It contains a nice user guide and the API docs. If you are coming from pandas, read Coming from Pandas first before you start writing code."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "spotopt-blog",
+    "section": "",
+    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n\n\n\n\n  \n\n\n\n\nWhy Polars is great\n\n\n\n\n\nDiscover the capabilities of Polars and explore its key differences from pandas in data manipulation and analysis. Learn how to choose between these powerful tools based on your data handling needs, ensuring efficient and effective data analysis.\n\n\n\n\n\n\nDec 1, 2023\n\n\n5 min\n\n\n\n\n\n\nNo matching items"
+  }
+]

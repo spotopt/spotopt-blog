@@ -1,0 +1,13 @@
+---
+title: "About"
+image: logo.png
+about:
+  template: jolla
+  links:
+    - icon: linkedin
+      text: LinkedIn
+      href: https://se.linkedin.com/in/raik-becker-8326a1153
+
+---
+
+I will write something. I promise.
