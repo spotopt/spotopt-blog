@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/how-to-read-from-entsoe-with-python/how_to_read_from_entsoe_with_python.html",
       "/posts/why-polars-is-great/why_polars_is_great.html"
     ]
   }
