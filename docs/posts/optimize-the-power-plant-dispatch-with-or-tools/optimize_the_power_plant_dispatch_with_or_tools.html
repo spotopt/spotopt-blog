@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Raik Becker">
+<meta name="dcterms.date" content="2024-02-18">
+
+<title>Spotopt-blog - Optimizing the power plant dispatch with OR-Tools</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../">
+<script src="../../site_libs/quarto-html/quarto.js"></script>
+<script src="../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../../site_libs/quarto-html/quarto-syntax-highlighting-dark.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../../site_libs/bootstrap/bootstrap-dark.min.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<link rel="stylesheet" href="../../styles.css">
+</head>
+
+<body class="nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="../../index.html">
+    <span class="navbar-title">Spotopt-blog</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="../../about.html" rel="" target="">
+ <span class="menu-text">About</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/spotopt" rel="" target=""><i class="bi bi-github" role="img">
+</i> 
+ <span class="menu-text"></span></a>
+  </li>  
+</ul>
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Optimizing the power plant dispatch with OR-Tools</h1>
+                                <div class="quarto-categories">
+                <div class="quarto-category">power markets</div>
+                <div class="quarto-category">python</div>
+                <div class="quarto-category">unit-commitment</div>
+                <div class="quarto-category">dispatch</div>
+                <div class="quarto-category">ortools</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Raik Becker </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">February 18, 2024</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  <div>
+    <div class="abstract">
+      <div class="abstract-title">Abstract</div>
+      This blog post examines the application of Google’s OR-Tools with a focus on unit-commitment and dispatch models, detailing setup, parameters, and constraints.
+    </div>
+  </div>
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#or-tools" id="toc-or-tools" class="nav-link active" data-scroll-target="#or-tools"><span class="header-section-number">1</span> OR-Tools</a>
+  <ul class="collapse">
+  <li><a href="#overview" id="toc-overview" class="nav-link" data-scroll-target="#overview"><span class="header-section-number">1.1</span> Overview</a></li>
+  <li><a href="#installation" id="toc-installation" class="nav-link" data-scroll-target="#installation"><span class="header-section-number">1.2</span> Installation</a></li>
+  </ul></li>
+  <li><a href="#the-unit-commitment-and-dispatch-model" id="toc-the-unit-commitment-and-dispatch-model" class="nav-link" data-scroll-target="#the-unit-commitment-and-dispatch-model"><span class="header-section-number">2</span> The unit-commitment and dispatch model</a>
+  <ul class="collapse">
+  <li><a href="#solver" id="toc-solver" class="nav-link" data-scroll-target="#solver"><span class="header-section-number">2.1</span> Solver</a></li>
+  <li><a href="#parameters" id="toc-parameters" class="nav-link" data-scroll-target="#parameters"><span class="header-section-number">2.2</span> Parameters</a></li>
+  <li><a href="#variables" id="toc-variables" class="nav-link" data-scroll-target="#variables"><span class="header-section-number">2.3</span> Variables</a></li>
+  <li><a href="#objective-function" id="toc-objective-function" class="nav-link" data-scroll-target="#objective-function"><span class="header-section-number">2.4</span> Objective function</a></li>
+  <li><a href="#constraints" id="toc-constraints" class="nav-link" data-scroll-target="#constraints"><span class="header-section-number">2.5</span> Constraints</a></li>
+  </ul></li>
+  <li><a href="#solving" id="toc-solving" class="nav-link" data-scroll-target="#solving"><span class="header-section-number">3</span> Solving</a></li>
+  <li><a href="#whats-next" id="toc-whats-next" class="nav-link" data-scroll-target="#whats-next"><span class="header-section-number">4</span> What’s next</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">5</span> Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+<section id="or-tools" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="or-tools"><span class="header-section-number">1</span> OR-Tools</h2>
+<section id="overview" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="overview"><span class="header-section-number">1.1</span> Overview</h3>
+<p>When exploring Python packages for tackling mixed-integer programming (MIP) and various optimization challenges, it’s crucial to distinguish between two key components: the front-end, where you define your problem (including the objective function and constraints), and the solver, which works behind the scenes to find a solution. Here are some of the more common options for solving MIP problems in Python:</p>
+<ul>
+<li><a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.milp.html#scipy.optimize.milp">milp in Scipy</a>, acting as a wrapper for <a href="https://highs.dev/">HiGHS linear optimization software</a>,</li>
+<li><a href="http://www.pyomo.org/">Pyomo</a>, which is also used by <a href="https://pypsa.org/index.html">Python for Power System Analysis (PyPSA)</a>,</li>
+<li><a href="https://github.com/coin-or/pulp">PuLP</a>, another popular choice for defining optimization models.</li>
+</ul>
+<p>However, a noteworthy contender in this field is <a href="https://developers.google.com/optimization">OR-Tools from Google</a>. According to the <a href="https://developers.google.com/optimization">OR-Tools webside</a>, OR-Tools is:</p>
+<blockquote class="blockquote">
+<p>[…] an open source software suite for optimization, tuned for tackling the world’s toughest problems in vehicle routing, flows, integer and linear programming, and constraint programming.</p>
+</blockquote>
+<p>As of February 10, 2024, the project had 10.2k stars on <a href="https://github.com/google/or-tools">GitHub</a>. For comparison, Pyomo had only 1.8k stars on <a href="https://github.com/Pyomo/pyomo">GitHub</a>.</p>
+<p>What I like about OR-Tools is the fact that a tech giant like Google is standing behind it. Google obviously has a lot of optimization problems to solve and hence they have a vested interest in the continuous development and maintenance of this project. What I don’t like is the API reference. The <a href="https://developers.google.com/optimization">website</a> with guides and examples is okay. However, the Python API reference could use more love even though there exist two versions, namely one build with <a href="https://or-tools.github.io/docs/pdoc/ortools.html">pdoc</a> and one <a href="https://or-tools.github.io/docs/python/index.html">doxygen version</a>.</p>
+<p>It is worth mentioning that OR-Tools comes with an interface to several commercial and non-commercial solvers, offering flexibility in choosing the right tool for the job. In addition, you can also make use of Google’s own solver for linear optimization problems, which is called <a href="https://github.com/google/or-tools/tree/stable/ortools/glop">Glop</a>.</p>
+</section>
+<section id="installation" class="level3" data-number="1.2">
+<h3 data-number="1.2" class="anchored" data-anchor-id="installation"><span class="header-section-number">1.2</span> Installation</h3>
+<p>The OR-Tools package is available on <a href="https://pypi.org/project/ortools/">PyPI</a> and can be installed using pip:</p>
+<pre><code>pip install ortools</code></pre>
+<p>For this blog post, I am using version 9.8.3296, which was the latest one I could install.</p>
+</section>
+</section>
+<section id="the-unit-commitment-and-dispatch-model" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="the-unit-commitment-and-dispatch-model"><span class="header-section-number">2</span> The unit-commitment and dispatch model</h2>
+<p>Let’s dive into solving a straightforward unit-commitment and dispatch problem using mixed-integer programming (MIP) with OR-Tools. We’ll explore both the problem formulation and the coding aspect side by side, providing a clear, step-by-step guide to under how OR-Tools works.</p>
+<section id="solver" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="solver"><span class="header-section-number">2.1</span> Solver</h3>
+<p>To begin, we initialize the solver by importing <code>pywraplp</code>. For solving MIPs, OR-Tools utilizes a third-party open-source solver know as <a href="https://www.scipopt.org/">SCIP (Solving Constraint Integer Programs)</a>. We’ll specify SCIP as our solver of choice in this example.</p>
+<div class="cell" data-execution_count="109">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1"></a><span class="im">from</span> ortools.linear_solver <span class="im">import</span> pywraplp</span>
+<span id="cb2-2"><a href="#cb2-2"></a>solver <span class="op">=</span> pywraplp.Solver.CreateSolver(<span class="st">"SCIP"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="parameters" class="level3" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="parameters"><span class="header-section-number">2.2</span> Parameters</h3>
+<section id="time" class="level4">
+<h4 class="anchored" data-anchor-id="time">Time</h4>
+<p>Three time steps are sufficient for demonstration purposes.</p>
+<div class="cell" data-execution_count="110">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1"></a>times <span class="op">=</span> (<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="costs-and-prices" class="level4">
+<h4 class="anchored" data-anchor-id="costs-and-prices">Costs and prices</h4>
+<p>Our power plant has fixed fuel costs and start-up costs. Meanwhile, the market price changes throughout the optimization horizon.</p>
+<table class="table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Time step</th>
+<th>Variable costs (<span class="math inline">\(C^F\)</span>)</th>
+<th>Start-up costs (<span class="math inline">\(C^{ST}\)</span>)</th>
+<th>Market price (<span class="math inline">\(\pi_t\)</span>)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>120</td>
+<td>10</td>
+<td>200</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>120</td>
+<td>10</td>
+<td>100</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>120</td>
+<td>10</td>
+<td>200</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="production-limits" class="level4">
+<h4 class="anchored" data-anchor-id="production-limits">Production limits</h4>
+<p>Our power plant can produce between 10 (<span class="math inline">\(P^{\min}\)</span>) and 100 MW (<span class="math inline">\(P^{\max}\)</span>). If it was between 0 and 100 MW, we could have modelled this as a linear program (LP).</p>
+<p>These are essentially all the input parameters we need:</p>
+<div class="cell" data-execution_count="111">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1"></a>PROD_MIN <span class="op">=</span> <span class="dv">10</span>  <span class="co"># in MW</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a>PROD_MAX <span class="op">=</span> <span class="dv">100</span>  <span class="co"># in MW</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a>PROD_COSTS <span class="op">=</span> {t: <span class="dv">120</span> <span class="cf">for</span> t <span class="kw">in</span> times}  <span class="co"># in EUR/MWh</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a>START_UP_COSTS <span class="op">=</span> <span class="dv">10</span>  <span class="co"># in EUR</span></span>
+<span id="cb4-5"><a href="#cb4-5"></a>PRICE <span class="op">=</span> {<span class="dv">1</span>: <span class="dv">200</span>, <span class="dv">2</span>: <span class="dv">100</span>, <span class="dv">3</span>: <span class="dv">200</span>}  <span class="co"># in EUR/MWh</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="variables" class="level3" data-number="2.3">
+<h3 data-number="2.3" class="anchored" data-anchor-id="variables"><span class="header-section-number">2.3</span> Variables</h3>
+<p>In total, four variables are needed. Only one that reflects the dispatch volume and three to model the unit-commitment logic, which we will dive into when adding the constraints to the model.</p>
+<ul>
+<li><span class="math inline">\(p_t \in [P^{\min}, P^{\max}]\)</span>: production</li>
+<li><span class="math inline">\(u_t \in \{0,1\}\)</span>: in operation</li>
+<li><span class="math inline">\(v_t \in \{0,1\}\)</span>: start-up</li>
+<li><span class="math inline">\(w_t \in \{0,1\}\)</span>: shut-down</li>
+</ul>
+<p>In the code, we store the variables that we add with either <code>IntVar</code> or <code>NumVar</code> into dictionaries so that we can access them later to write the constraints.</p>
+<div class="cell" data-execution_count="112">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1"></a>production <span class="op">=</span> <span class="bu">dict</span>.fromkeys(times)</span>
+<span id="cb5-2"><a href="#cb5-2"></a>operating <span class="op">=</span> <span class="bu">dict</span>.fromkeys(times)</span>
+<span id="cb5-3"><a href="#cb5-3"></a>start_up <span class="op">=</span> <span class="bu">dict</span>.fromkeys(times)</span>
+<span id="cb5-4"><a href="#cb5-4"></a>shut_down <span class="op">=</span> <span class="bu">dict</span>.fromkeys(times)</span>
+<span id="cb5-5"><a href="#cb5-5"></a></span>
+<span id="cb5-6"><a href="#cb5-6"></a></span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb5-8"><a href="#cb5-8"></a>    operating[t] <span class="op">=</span> solver.IntVar(<span class="dv">0</span>, <span class="dv">1</span>, <span class="ss">f"operating_</span><span class="sc">{</span>t<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-9"><a href="#cb5-9"></a>    start_up[t] <span class="op">=</span> solver.IntVar(<span class="dv">0</span>, <span class="dv">1</span>, <span class="ss">f"start_up_</span><span class="sc">{</span>t<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-10"><a href="#cb5-10"></a>    shut_down[t] <span class="op">=</span> solver.IntVar(<span class="dv">0</span>, <span class="dv">1</span>, <span class="ss">f"shut_down_</span><span class="sc">{</span>t<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-11"><a href="#cb5-11"></a>    production[t] <span class="op">=</span> solver.NumVar(<span class="dv">0</span>, PROD_MAX, <span class="ss">f"production_</span><span class="sc">{</span>t<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="objective-function" class="level3" data-number="2.4">
+<h3 data-number="2.4" class="anchored" data-anchor-id="objective-function"><span class="header-section-number">2.4</span> Objective function</h3>
+<p>Our objective is to maximize profits. In every time step, our revenue is defined as the market price minus our fuel costs for the energy produced: <span class="math inline">\((\pi_t - C^F) \cdot p_t\)</span>. In addition, the start-up costs <span class="math inline">\(C^{ST}\)</span> need to be added for start-ups <span class="math inline">\(v_t\)</span>. Costs for shutting down the power plant are neglected. This yields the following objective function:</p>
+<p><span class="math display">\[\max_{\mathbf{v}, \mathbf{p}}  \sum_{t \in T} (\pi_t - C^F) \cdot p_t + C^{ST} \cdot v_t.\]</span></p>
+<p>We need to do the same in the code. By making use of a list comprehension, we can add it via <code>solver.Sum()</code> to the solver.</p>
+<div class="cell" data-execution_count="113">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1"></a>obj_expr <span class="op">=</span> [</span>
+<span id="cb6-2"><a href="#cb6-2"></a>    (PRICE[t] <span class="op">-</span> PROD_COSTS[t]) <span class="op">*</span> production[t]</span>
+<span id="cb6-3"><a href="#cb6-3"></a>    <span class="op">-</span> START_UP_COSTS <span class="op">*</span> start_up[t]</span>
+<span id="cb6-4"><a href="#cb6-4"></a>    <span class="cf">for</span> t <span class="kw">in</span> times</span>
+<span id="cb6-5"><a href="#cb6-5"></a>]</span>
+<span id="cb6-6"><a href="#cb6-6"></a>solver.Maximize(solver.Sum(obj_expr))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="constraints" class="level3" data-number="2.5">
+<h3 data-number="2.5" class="anchored" data-anchor-id="constraints"><span class="header-section-number">2.5</span> Constraints</h3>
+<section id="production-limits-1" class="level4">
+<h4 class="anchored" data-anchor-id="production-limits-1">Production limits</h4>
+<p>We need to add constraints for the production limits. Given that <span class="math inline">\(P^{\min} &gt; 0\)</span>, it is necessary to add the commitment variable <span class="math inline">\(u_t\)</span>. Otherwise the production <span class="math inline">\(p_t\)</span> could never be zero when the power plant is switched off.</p>
+<p><span class="math display">\[ u_t \cdot P^{\min} \leq p_t \leq u_t \cdot P^{\max}\]</span></p>
+<p>In the code, it could make sense to split this constraint up into two constraints for the sake of clarity. In Or-Tools, constraints are added with <code>solver.Add()</code>. This is required for each time step and that is why we need a for loop here.</p>
+<div class="cell" data-execution_count="114">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb7-2"><a href="#cb7-2"></a>    solver.Add(operating[t] <span class="op">*</span> PROD_MIN <span class="op">&lt;=</span> production[t])</span>
+<span id="cb7-3"><a href="#cb7-3"></a>    solver.Add(production[t] <span class="op">&lt;=</span> operating[t] <span class="op">*</span> PROD_MAX)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="unit-commitment-logic" class="level4">
+<h4 class="anchored" data-anchor-id="unit-commitment-logic">Unit-commitment logic</h4>
+<p>There is at least one constraint needed to link the unit-commitment integer variables together. The chosen formulation is as follows:</p>
+<p><span class="math display">\[u_t = u_{t-1} + v_t - w_t.\]</span></p>
+<p>This equation ensures that if a power plant starts at time <span class="math inline">\(t\)</span> (indicated by a positive <span class="math inline">\(v_t\)</span>), it is considered operational in that period due to <span class="math inline">\(u_t = \dots + v_t \dots\)</span>. There are also other formulations out there in which you might need to start the power plant in <span class="math inline">\(t-1\)</span> so that is operational in <span class="math inline">\(t\)</span>. This can be useful when modelling more complex start-up constraints. However, I find the formulation I use here more intuitive and compact.</p>
+<p>In the code, we need to start iterating over time steps from the second interval, as the initial step lacks a preceding time step (<span class="math inline">\(t-1\)</span>). Consequently, to manage the commitment status in the first time step, an additional constraint is needed. This constraint ensures the power plant is marked as operational (committed) if it is started at <span class="math inline">\(t=1\)</span>, addressing the absence of a prior state.</p>
+<div class="cell" data-execution_count="115">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1"></a><span class="cf">for</span> t <span class="kw">in</span> times[<span class="dv">1</span>:]:</span>
+<span id="cb8-2"><a href="#cb8-2"></a>    solver.Add(operating[t] <span class="op">==</span> operating[t <span class="op">-</span> <span class="dv">1</span>] <span class="op">+</span> start_up[t] <span class="op">-</span> shut_down[t])</span>
+<span id="cb8-3"><a href="#cb8-3"></a></span>
+<span id="cb8-4"><a href="#cb8-4"></a>solver.Add(operating[<span class="dv">1</span>] <span class="op">==</span> start_up[<span class="dv">1</span>])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="115">
+<pre><code>&lt;ortools.linear_solver.pywraplp.Constraint; proxy of &lt;Swig Object of type 'operations_research::MPConstraint *' at 0x7f5fd1387840&gt; &gt;</code></pre>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="solving" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="solving"><span class="header-section-number">3</span> Solving</h2>
+<p>Let’s solve this profit maximization problem and catch the solution (<code>status</code>).</p>
+<div class="cell" data-execution_count="116">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1"></a>status <span class="op">=</span> solver.Solve()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Let’s first check whether the optimization was solved successfully and what the optimal objective value is.</p>
+<div class="cell" data-execution_count="117">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1"></a><span class="cf">if</span> status <span class="op">==</span> pywraplp.Solver.OPTIMAL:</span>
+<span id="cb11-2"><a href="#cb11-2"></a>    <span class="bu">print</span>(<span class="st">"Objective value ="</span>, solver.Objective().Value())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Objective value = 15980.0</code></pre>
+</div>
+</div>
+<p>To get to this solution, the solver needed:</p>
+<div class="cell" data-execution_count="118">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>solver<span class="sc">.</span>wall_time()<span class="sc">:d}</span><span class="ss"> milliseconds."</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>109 milliseconds.</code></pre>
+</div>
+</div>
+<p>The solver needed to explore:</p>
+<div class="cell" data-execution_count="119">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>solver<span class="sc">.</span>nodes()<span class="sc">:d}</span><span class="ss"> branch-and-bound nodes."</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>0 branch-and-bound nodes.</code></pre>
+</div>
+</div>
+<p>That is because the MIP and LP results are exactly the same. Hence, there is no need to further add branches.</p>
+<p>Let’s inspect the optimal dispatch.</p>
+<div class="cell" data-execution_count="120">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb17-2"><a href="#cb17-2"></a>    <span class="bu">print</span>(production[t].solution_value())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>100.0
+0.0
+100.0</code></pre>
+</div>
+</div>
+<p>The power plants is operating with the maximum admissible production capacity when the market price is above the variable and start-up costs. This implies that the power plant is switched off during the second time interval, which we can confirm when inspecting the integer variables.</p>
+<div class="cell" data-execution_count="121">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1"></a><span class="bu">print</span>(<span class="st">"Operation ------------------------------"</span>)</span>
+<span id="cb19-2"><a href="#cb19-2"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb19-3"><a href="#cb19-3"></a>    <span class="bu">print</span>(operating[t].solution_value())</span>
+<span id="cb19-4"><a href="#cb19-4"></a></span>
+<span id="cb19-5"><a href="#cb19-5"></a><span class="bu">print</span>(<span class="st">"start-up ------------------------------"</span>)</span>
+<span id="cb19-6"><a href="#cb19-6"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb19-7"><a href="#cb19-7"></a>    <span class="bu">print</span>(start_up[t].solution_value())</span>
+<span id="cb19-8"><a href="#cb19-8"></a></span>
+<span id="cb19-9"><a href="#cb19-9"></a><span class="bu">print</span>(<span class="st">"shut-down ------------------------------"</span>)</span>
+<span id="cb19-10"><a href="#cb19-10"></a><span class="cf">for</span> t <span class="kw">in</span> times:</span>
+<span id="cb19-11"><a href="#cb19-11"></a>    <span class="bu">print</span>(shut_down[t].solution_value())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Operation ------------------------------
+1.0
+0.0
+1.0
+start-up ------------------------------
+1.0
+0.0
+1.0
+shut-down ------------------------------
+-0.0
+1.0
+0.0</code></pre>
+</div>
+</div>
+</section>
+<section id="whats-next" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="whats-next"><span class="header-section-number">4</span> What’s next</h2>
+<p>If you wanted to extend the scope of this unit-commitment and dispatch optimization, the next steps would include adding ramping constraints as well as the minimum uptime and downtime. These kind of constraints could be simply added as a combination of for loops and <code>solver.Add()</code>. In that sense, OR-Tools could get you quite far with a, in my opinion, nice and clean syntax.</p>
+</section>
+<section id="summary" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="summary"><span class="header-section-number">5</span> Summary</h2>
+<p>OR-Tools, supported by Google, is a comprehensive solution for tackling a wide range of optimization problems, including linear, integer, and constraint programming. Our exploration included a hands-on example with a unit-commitment and dispatch model, showcasing the clean and modern syntax that makes OR-Tools appealing for project development. However, the API reference could be more user-friendly. Despite that, I could see myself using OR-Tools for a bigger project but it is always worth checking in advance whether it really serves all your requirements.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const disableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'prefetch';
+    }
+  }
+  const enableStylesheet = (stylesheets) => {
+    for (let i=0; i < stylesheets.length; i++) {
+      const stylesheet = stylesheets[i];
+      stylesheet.rel = 'stylesheet';
+    }
+  }
+  const manageTransitions = (selector, allowTransitions) => {
+    const els = window.document.querySelectorAll(selector);
+    for (let i=0; i < els.length; i++) {
+      const el = els[i];
+      if (allowTransitions) {
+        el.classList.remove('notransition');
+      } else {
+        el.classList.add('notransition');
+      }
+    }
+  }
+  const toggleColorMode = (alternate) => {
+    // Switch the stylesheets
+    const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+    manageTransitions('#quarto-margin-sidebar .nav-link', false);
+    if (alternate) {
+      enableStylesheet(alternateStylesheets);
+      for (const sheetNode of alternateStylesheets) {
+        if (sheetNode.id === "quarto-bootstrap") {
+          toggleBodyColorMode(sheetNode);
+        }
+      }
+    } else {
+      disableStylesheet(alternateStylesheets);
+      toggleBodyColorPrimary();
+    }
+    manageTransitions('#quarto-margin-sidebar .nav-link', true);
+    // Switch the toggles
+    const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+    for (let i=0; i < toggles.length; i++) {
+      const toggle = toggles[i];
+      if (toggle) {
+        if (alternate) {
+          toggle.classList.add("alternate");     
+        } else {
+          toggle.classList.remove("alternate");
+        }
+      }
+    }
+    // Hack to workaround the fact that safari doesn't
+    // properly recolor the scrollbar when toggling (#1455)
+    if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+      manageTransitions("body", false);
+      window.scrollTo(0, 1);
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        manageTransitions("body", true);
+      }, 40);  
+    }
+  }
+  const isFileUrl = () => { 
+    return window.location.protocol === 'file:';
+  }
+  const hasAlternateSentinel = () => {  
+    let styleSentinel = getColorSchemeSentinel();
+    if (styleSentinel !== null) {
+      return styleSentinel === "alternate";
+    } else {
+      return false;
+    }
+  }
+  const setStyleSentinel = (alternate) => {
+    const value = alternate ? "alternate" : "default";
+    if (!isFileUrl()) {
+      window.localStorage.setItem("quarto-color-scheme", value);
+    } else {
+      localAlternateSentinel = value;
+    }
+  }
+  const getColorSchemeSentinel = () => {
+    if (!isFileUrl()) {
+      const storageValue = window.localStorage.getItem("quarto-color-scheme");
+      return storageValue != null ? storageValue : localAlternateSentinel;
+    } else {
+      return localAlternateSentinel;
+    }
+  }
+  let localAlternateSentinel = 'alternate';
+  // Dark / light mode switch
+  window.quartoToggleColorScheme = () => {
+    // Read the current dark / light value 
+    let toAlternate = !hasAlternateSentinel();
+    toggleColorMode(toAlternate);
+    setStyleSentinel(toAlternate);
+  };
+  // Ensure there is a toggle, if there isn't float one in the top right
+  if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+    const a = window.document.createElement('a');
+    a.classList.add('top-right');
+    a.classList.add('quarto-color-scheme-toggle');
+    a.href = "";
+    a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+    const i = window.document.createElement("i");
+    i.classList.add('bi');
+    a.appendChild(i);
+    window.document.body.appendChild(a);
+  }
+  // Switch to dark mode if need be
+  if (hasAlternateSentinel()) {
+    toggleColorMode(true);
+  } else {
+    toggleColorMode(false);
+  }
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
