@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/optimize-the-power-plant-dispatch-with-or-tools/optimize_the_power_plant_dispatch_with_or_tools.html",
       "/posts/when-to-use-probabilistic-forecasts-for-bidding/when_to_use_probabilistic_forecasts_for_bidding.html",
       "/posts/how-to-read-from-entsoe-with-python/how_to_read_from_entsoe_with_python.html",
       "/posts/why-polars-is-great/why_polars_is_great.html"
